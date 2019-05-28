@@ -210,7 +210,7 @@ pre {
 <section class='container'>
 
         <hgroup>
-           <h1>Ofer, Welcome to your CakePHP application on OpenShift</h1>
+           <h1>Gil again, Welcome to your CakePHP application on OpenShift</h1>
         </hgroup>
 
         <?= $this->fetch('content') ?>
