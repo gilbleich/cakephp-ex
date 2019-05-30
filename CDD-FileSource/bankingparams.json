@@ -1,0 +1,26 @@
+{
+"parameters": [
+    {
+      "name": "BankerApp_version",
+
+      "value": "1.1"
+
+    },
+	{
+      "name": "DB__version",
+
+      "value": "1.1"
+    },
+	{
+      "name": "Banking_version",
+
+      "value": "2"
+
+	}
+  ], 
+ "reference": {
+
+    "fileName": "GardenPipeline.json",
+    "fileSource": "GardenPipelineReference"
+  }
+}
