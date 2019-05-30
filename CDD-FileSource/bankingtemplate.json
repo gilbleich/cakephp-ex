@@ -1,0 +1,481 @@
+{
+	"objects": [{
+		"application": "Local|BankerApp",
+		"name": "%BankerApp_version%",
+		"kind": "ApplicationVersion"
+	},
+	{
+		"application": "Local|MyBank",
+		"name": "1.0",
+		"kind": "ApplicationVersion"
+	},
+	{
+		"application": "Local|Bank_DB_1",
+		"name": "%DB__version%",
+		"kind": "ApplicationVersion"
+	},
+	{
+		"applicationVersion": "Local|BankerApp/%BankerApp_version%",
+		"name": "Stories",
+		"kind": "ContentSource",
+		"endpoint": "Gil-AC",
+		"plugin": "Rally Platform/2.5",
+		"parameters": {
+			"release": "CDD7.2",
+			"project": "Continuous Delivery Director",
+			"importFromChildProject": "false",
+			"type": "User Story"
+		},
+		"type": "Add Content"
+	},
+	{
+		"applicationVersion": "Local|BankerApp/%BankerApp_version%",
+		"commitRegularExpression": "^[ \\\\t]*([A-Za-z0-9_]+)",
+		"name": "1.0_commitSource",
+		"kind": "CommitSource",
+		"endpoint": "Gil_public_Github",
+		"plugin": "GitHub/1.0.2",
+		"parameters": {
+			"owner": "gilbleich",
+			"repository": "cakephp-ex"
+		},
+		"type": "Get Commit Messages"
+	},
+	{
+		"version": "%Banking_version%",
+		"ownerParties": ["superuser@ca.com"],
+		"applicationVersions": ["Local|BankerApp/%BankerApp_version%",
+		"Local|MyBank/1.0",
+		"Local|Bank_DB_1/%DB__version%"],
+		"markAsDonePhaseName": "",
+		"runOnCreation": false,
+		"description": "<p>\t\t\t</p>",
+		"name": "Banking",
+		"kind": "Release"
+	},
+	{
+		"release": "Banking/%Banking_version%",
+		"scope": "PHASE_SCOPE",
+		"value": "",
+		"name": "CR",
+		"kind": "ReleaseToken"
+	},
+	{
+		"environments": ["B_Test"],
+		"release": "Banking/%Banking_version%",
+		"skipTasksWithUnchangedApplications": true,
+		"approvalGate": "AUTOMATIC",
+		"isApprovalRequired": false,
+		"name": "Test",
+		"kind": "Phase"
+	},
+	{
+		"environments": ["B_Integration"],
+		"release": "Banking/%Banking_version%",
+		"skipTasksWithUnchangedApplications": false,
+		"previousPhase": "Test",
+		"approvalGate": "AUTOMATIC",
+		"isApprovalRequired": false,
+		"name": "Integration",
+		"kind": "Phase"
+	},
+	{
+		"environments": ["B_Preprod"],
+		"release": "Banking/%Banking_version%",
+		"skipTasksWithUnchangedApplications": false,
+		"recurrence": {
+			"timeZoneId": "Asia/Jerusalem",
+			"recurrencePattern": "WEEKLY"
+		},
+		"previousPhase": "Integration",
+		"approvalGate": "SCHEDULED",
+		"plannedStartDate": "12/06/2019 08:00:00 -04",
+		"plannedEndDate": "12/06/2019 10:12:00 -04",
+		"isApprovalRequired": false,
+		"name": "Pre-Production",
+		"kind": "Phase"
+	},
+	{
+		"environments": ["B_Prod"],
+		"release": "Banking/%Banking_version%",
+		"skipTasksWithUnchangedApplications": false,
+		"previousPhase": "Pre-Production",
+		"approvalGate": "SCHEDULED",
+		"plannedStartDate": "28/06/2019 06:46:08 -04",
+		"plannedEndDate": "30/06/2019 07:46:08 -04",
+		"isApprovalRequired": false,
+		"name": "Production 50%",
+		"kind": "Phase"
+	},
+	{
+		"environments": ["B_Prod"],
+		"release": "Banking/%Banking_version%",
+		"skipTasksWithUnchangedApplications": false,
+		"previousPhase": "Production 50%",
+		"approvalGate": "AUTOMATIC",
+		"isApprovalRequired": false,
+		"name": "Production 100%",
+		"kind": "Phase"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Test",
+		"applicationVersions": ["Local|BankerApp/%BankerApp_version%"],
+		"isDisabled": false,
+		"name": "Deploy BankerApp",
+		"kind": "Task",
+		"endpoint": "Gil_OpenShift",
+		"plugin": "OpenShift/1.1",
+		"parameters": {
+			"build_config_name": "cakephp-mysql-example",
+			"namespace": "gil",
+			"build_number": "%BankerApp.last_successful_change%"
+		},
+		"type": "Start Build"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Test",
+		"applicationVersions": ["Local|MyBank/1.0"],
+		"previousTasks": ["Deploy BankerApp"],
+		"isDisabled": true,
+		"name": "Deploy MyBank",
+		"kind": "Task",
+		"endpoint": "Gil_OpenShift",
+		"plugin": "OpenShift/1.1",
+		"parameters": {
+			"build_config_name": "cakephp-mysql-example",
+			"namespace": "gil",
+			"build_number": "%BankerApp.last_successful_change%"
+		},
+		"type": "Start Build"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Test",
+		"applicationVersions": ["Local|Bank_DB_1/%DB__version%"],
+		"previousTasks": ["Deploy MyBank"],
+		"isDisabled": false,
+		"name": "Deploy DB",
+		"kind": "Task",
+		"endpoint": "Gil_RA",
+		"plugin": "Release Automation/5.5.7",
+		"parameters": {
+			"environment": "Environment for Default Architecture",
+			"application": "BK_S",
+			"deploymentPlan": "DP_BKS",
+			"build": "%Bank_DB_1.last_successful_change%",
+			"project": "BK_S"
+		},
+		"type": "Run Deployment"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Test",
+		"tags": ["Pass"],
+		"applicationVersions": ["Local|BankerApp/%BankerApp_version%"],
+		"previousTasks": ["Deploy DB"],
+		"isDisabled": false,
+		"name": "Regression",
+		"kind": "Task",
+		"plugin": "ADAPTIVE TESTING/1.1.1",
+		"parameters": {
+			"changeId": "%BankerApp.last_successful_change%",
+			"runOnlySubset": "false"
+		},
+		"type": "Run Adaptive Testing"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Test",
+		"applicationVersions": ["Local|BankerApp/%BankerApp_version%"],
+		"previousTasks": ["Regression"],
+		"isDisabled": false,
+		"name": "Check sonar scan",
+		"kind": "Task",
+		"endpoint": "Gil_Sonar",
+		"plugin": "SonarQube/1.1",
+		"parameters": {
+			"projectKey": "com.hazelcast:hazelcast-kubernetes",
+			"failOnWarning": "false"
+		},
+		"type": "Check Project Status"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Integration",
+		"applicationVersions": ["Local|BankerApp/%BankerApp_version%"],
+		"isDisabled": false,
+		"name": "Deploy BankerApp",
+		"kind": "Task",
+		"endpoint": "Gil_OpenShift",
+		"plugin": "OpenShift/1.1",
+		"parameters": {
+			"build_config_name": "cakephp-mysql-example",
+			"namespace": "gil",
+			"build_number": "%BankerApp.last_successful_change%"
+		},
+		"type": "Start Build"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Integration",
+		"applicationVersions": ["Local|MyBank/1.0"],
+		"previousTasks": ["Deploy BankerApp"],
+		"isDisabled": true,
+		"name": "Deploy MyBank",
+		"kind": "Task",
+		"endpoint": "Gil_OpenShift",
+		"plugin": "OpenShift/1.1",
+		"parameters": {
+			"build_config_name": "cakephp-mysql-example",
+			"namespace": "gil",
+			"build_number": "%BankerApp.last_successful_change%"
+		},
+		"type": "Start Build"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Integration",
+		"applicationVersions": ["Local|Bank_DB_1/%DB__version%"],
+		"previousTasks": ["Deploy MyBank"],
+		"isDisabled": false,
+		"name": "Deploy DB",
+		"kind": "Task",
+		"endpoint": "Gil_RA",
+		"plugin": "Release Automation/5.5.7",
+		"parameters": {
+			"environment": "Environment for Default Architecture",
+			"application": "BK_S",
+			"deploymentPlan": "DP_BKS",
+			"build": "1",
+			"project": "BK_S"
+		},
+		"type": "Run Deployment"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Integration",
+		"previousTasks": ["Deploy DB"],
+		"isDisabled": false,
+		"name": "testing",
+		"kind": "Task"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Integration",
+		"previousTasks": ["testing"],
+		"isDisabled": false,
+		"name": "Team notification",
+		"kind": "Task",
+		"endpoint": "Gil-Slack",
+		"plugin": "Slack/1.1",
+		"parameters": {
+			"message": "Done on integration",
+			"username": "CDDirector"
+		},
+		"type": "Post message"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Pre-Production",
+		"applicationVersions": ["Local|BankerApp/%BankerApp_version%"],
+		"isDisabled": false,
+		"name": "Deploy BankerApp",
+		"kind": "Task",
+		"endpoint": "Gil_OpenShift",
+		"plugin": "OpenShift/1.1",
+		"parameters": {
+			"build_config_name": "cakephp-mysql-example",
+			"namespace": "gil",
+			"build_number": "%BankerApp.last_successful_change%"
+		},
+		"type": "Start Build"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Pre-Production",
+		"applicationVersions": ["Local|MyBank/1.0"],
+		"previousTasks": ["Deploy BankerApp"],
+		"isDisabled": true,
+		"name": "Deploy MyBank",
+		"kind": "Task",
+		"endpoint": "Gil_OpenShift",
+		"plugin": "OpenShift/1.1",
+		"parameters": {
+			"build_config_name": "cakephp-mysql-example",
+			"namespace": "gil",
+			"build_number": "%BankerApp.last_successful_change%"
+		},
+		"type": "Start Build"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Pre-Production",
+		"applicationVersions": ["Local|Bank_DB_1/%DB__version%"],
+		"previousTasks": ["Deploy MyBank"],
+		"isDisabled": false,
+		"name": "Deploy DB",
+		"kind": "Task",
+		"endpoint": "Gil_RA",
+		"plugin": "Release Automation/5.5.7",
+		"parameters": {
+			"environment": "Environment for Default Architecture",
+			"application": "BK_S",
+			"deploymentPlan": "DP_BKS",
+			"build": "1",
+			"project": "BK_S"
+		},
+		"type": "Run Deployment"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Pre-Production",
+		"previousTasks": ["Deploy DB"],
+		"isDisabled": false,
+		"name": "testing",
+		"kind": "Task"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Pre-Production",
+		"previousTasks": ["testing"],
+		"isDisabled": false,
+		"name": "Email release team",
+		"kind": "Task",
+		"endpoint": "Email",
+		"plugin": "Email/1.1",
+		"parameters": {
+			"subject": "Release Banking passed pre-prod",
+			"to": "gil.naaman@gmail.com",
+			"body": "BankerApp: %BankerApp.last_successful_change%\nMyBank: %MyBank.last_successful_change%\nBank_DB:%Bank_DB_1.last_successful_change%"
+		},
+		"type": "Send Email"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Pre-Production",
+		"previousTasks": ["Email release team"],
+		"isDisabled": false,
+		"name": "Create CR for Production",
+		"kind": "Task",
+		"endpoint": "Gil_SN",
+		"plugin": "ServiceNow/2.2",
+		"parameters": {
+			"changeRequestId": "%CR%",
+			"shortDescription": "change request fro Bank Production"
+		},
+		"type": "Create Change Request"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 50%",
+		"applicationVersions": ["Local|BankerApp/%BankerApp_version%"],
+		"isDisabled": false,
+		"name": "Deploy BankerApp",
+		"kind": "Task",
+		"endpoint": "Gil_OpenShift",
+		"plugin": "OpenShift/1.1",
+		"parameters": {
+			"build_config_name": "cakephp-mysql-example",
+			"namespace": "gil",
+			"build_number": "%BankerApp.last_successful_change%"
+		},
+		"type": "Start Build"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 50%",
+		"applicationVersions": ["Local|MyBank/1.0"],
+		"previousTasks": ["Deploy BankerApp"],
+		"isDisabled": true,
+		"name": "Deploy MyBank",
+		"kind": "Task",
+		"endpoint": "Gil_OpenShift",
+		"plugin": "OpenShift/1.1",
+		"parameters": {
+			"build_config_name": "cakephp-mysql-example",
+			"namespace": "gil",
+			"build_number": "%BankerApp.last_successful_change%"
+		},
+		"type": "Start Build"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 50%",
+		"applicationVersions": ["Local|Bank_DB_1/%DB__version%"],
+		"previousTasks": ["Deploy MyBank"],
+		"isDisabled": false,
+		"name": "Deploy DB",
+		"kind": "Task",
+		"endpoint": "Gil_RA",
+		"plugin": "Release Automation/5.5.7",
+		"parameters": {
+			"environment": "Environment for Default Architecture",
+			"application": "BK_S",
+			"deploymentPlan": "DP_BKS",
+			"build": "1",
+			"project": "BK_S"
+		},
+		"type": "Run Deployment"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 50%",
+		"previousTasks": ["Deploy DB"],
+		"isDisabled": false,
+		"name": "testing",
+		"kind": "Task"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 50%",
+		"previousTasks": ["testing"],
+		"isDisabled": false,
+		"name": "Monitor production",
+		"kind": "Task",
+		"plugin": "AXA/1.1",
+		"type": "Monitor"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 50%",
+		"previousTasks": ["Monitor production"],
+		"isDisabled": false,
+		"name": "Email release team",
+		"kind": "Task",
+		"endpoint": "Email",
+		"plugin": "Email/1.1",
+		"parameters": {
+			"subject": "Release Banking passed pre-prod",
+			"to": "gil.naaman@gmail.com",
+			"body": "BankerApp: %BankerApp.last_successful_change%\nMyBank: %MyBank.last_successful_change%\nBank_DB:%Bank_DB_1.last_successful_change%"
+		},
+		"type": "Send Email"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 50%",
+		"previousTasks": ["Email release team"],
+		"isDisabled": false,
+		"name": "Wait for approval",
+		"kind": "Task",
+		"endpoint": "Gil_SN",
+		"plugin": "ServiceNow/2.2",
+		"parameters": {
+			"changeRequestId": "%CR%",
+			"pollInterval": "30",
+			"statusField": "status",
+			"requiredStatus": "approved",
+			"ticketType": "Change Request"
+		},
+		"type": "Wait For Approval"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 100%",
+		"isDisabled": false,
+		"name": "Update OS Route",
+		"kind": "Task"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 100%",
+		"previousTasks": ["Update OS Route"],
+		"isDisabled": false,
+		"name": "Monitor Production",
+		"kind": "Task",
+		"plugin": "AXA/1.1",
+		"type": "Monitor"
+	},
+	{
+		"phase": "Banking/%Banking_version%/Production 100%",
+		"previousTasks": ["Monitor Production"],
+		"isDisabled": false,
+		"name": "Email release team",
+		"kind": "Task",
+		"endpoint": "Email",
+		"plugin": "Email/1.1",
+		"parameters": {
+			"subject": "Release Banking passed pre-prod",
+			"to": "gil.naaman@gmail.com",
+			"body": "Production is complete"
+		},
+		"type": "Send Email"
+	}]
+}
