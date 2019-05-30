@@ -21,6 +21,6 @@
  "reference": {
 
     "fileName": "bankingtemplate.json",
-    "fileSource": "GardenPipelineReference"
+    "fileSource": "Banking"
   }
 }
